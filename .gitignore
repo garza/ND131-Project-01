@@ -1,0 +1,7 @@
+.DS_Store
+**/.DS_Store
+webservice/server/node_modules
+webservice/ui/node_modules
+__pycache__
+
+model-*
