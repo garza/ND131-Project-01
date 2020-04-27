@@ -6,9 +6,12 @@ questions.
 
 ## Explaining Custom Layers
 
-The process behind converting custom layers involves...
+The process behind identifying custom layers involves loading a model into the network and using the IENetwork API to enumerate through each network layer.  This is to ensure the device you will be running inference on will be able to support all the layers in your network.  If a layer exists that is not supported by your edge device, Custom Layers offers an API to hook into at this stage to to apply your own support for these layers.
 
-Some of the potential reasons for handling custom layers are...
+For each custom layer involves implmenting a custom layer attribute extraction and implmentation for the Model Optimizer to utilize when creating an IR of your model.  Furthermore, for IE to successfully utilize a implemented Custom Layer, an implmentation for each supported platform (CPU, GPU, FPGA) must also be provided so that the Inference Engine can properly support the new custom layer on the edge device.
+
+Some of the potential reasons for handling custom layers are newly developed network that may contain layers that perform operations that aren't in the supported by the Intel OpenVINO toolkit.  Custom Layers offers developers an opportunity to still add support for these newer layers by implementing support via a custom layer for these unsupported operations.
+
 
 ## Comparing Model Performance
 
@@ -111,6 +114,8 @@ Python Demo Code:
  - [object_detection_demo_yolo3_async](https://docs.openvinotoolkit.org/2020.1/_demos_python_demos_object_detection_demo_yolov3_async_README.html)
 
 When creating the TensorFlow test harness for analyzing inference speed before using an IR model, the example code at the TensorFlow Model Garden helped immensely in getting up to speed and inferring result locally:
+
+- [Object Detection API Demo](https://github.com/tensorflow/models/blob/master/research/object_detection/object_detection_tutorial.ipynb)
 
 When implementing Nonmax Supression and Intersection Over Union (IOU) on my resulting bounding boxes, I looked for alot of similar examples of this function, some that came in extremely handy was:
 
