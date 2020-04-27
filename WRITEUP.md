@@ -87,7 +87,7 @@ In investigating potential people counter models, I tried each of the following 
 - Model 3: [ssd_mobilenet_v2_coco_2018_03_29]
   - [ssd_mobilenet_v2_coco_2018_03_29](http://download.tensorflow.org/models/object_detection/ssd_mobilenet_v2_coco_2018_03_29.tar.gz)
   - I converted the model to an Intermediate Representation with the following arguments...
-    
+
   ```
   python /opt/intel/openvino/deployment_tools/model_optimizer/mo.py \
   --input_model model-04/frozen_inference_graph.pb \
@@ -96,3 +96,23 @@ In investigating potential people counter models, I tried each of the following 
    --tensorflow_use_custom_operations_config /opt/intel/openvino/deployment_tools/model_optimizer/extensions/front/tf/ssd_v2_support.json
    ```
   - The model was insufficient for the app because accuracy for when people were in the frame were too low, even when using a probabilty threshold of 0.25 and a 10 frame rolling buffer, I still got frequent dropouts resulting in double counting several of the same people and inaccurate duration calculations.
+
+
+## Sources Used For Code ##
+
+I relied heavily on the projects from the initial foundation course for alot of the code in this project, as well as the example python demos distributed by OpenVINO:
+  - ND132 Lesson 2 - Exercise 1 - Convert A Tensorflow Model
+  - ND132 Lesson 3 - Exercise 4 - Custom Layers
+  - ND132 Lesson 5 - Exercise 1 - Handling Input Streams
+  - ND132 Lesson 5 - Exercise 3 - Server Communications
+
+Python Demo Code:
+ - [object_detection_demo_ssd_async](https://docs.openvinotoolkit.org/2020.1/_inference_engine_ie_bridges_python_sample_object_detection_sample_ssd_README.html)
+ - [object_detection_demo_yolo3_async](https://docs.openvinotoolkit.org/2020.1/_demos_python_demos_object_detection_demo_yolov3_async_README.html)
+
+When creating the TensorFlow test harness for analyzing inference speed before using an IR model, the example code at the TensorFlow Model Garden helped immensely in getting up to speed and inferring result locally:
+
+When implementing Nonmax Supression and Intersection Over Union (IOU) on my resulting bounding boxes, I looked for alot of similar examples of this function, some that came in extremely handy was:
+
+- [Object Detection With YOLO](http://machinethink.net/blog/object-detection-with-yolo/)
+- [object_detection_demo_yolo3_async](https://docs.openvinotoolkit.org/2020.1/_demos_python_demos_object_detection_demo_yolov3_async_README.html)
