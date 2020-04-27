@@ -114,12 +114,33 @@ def infer_on_stream(args, client, stats):
     log.info(net_input_name)
     log.info(net_input_shape)
     ### TODO: Handle the input stream ###
-    cap = cv2.VideoCapture(args.input)
-    cap.open(args.input)
+    iflag = False
+    input_stream_arg = 0 if args.input == "cam" else args.input
 
+    if input_stream_arg.endswith('.jpg') or input_stream_arg.endswith('.bmp'):
+        iflag = True
+
+    width = 0
+    height = 0
+    frame = None
+    cap = None
+    captureOpen = False
+
+    if iflag:
+        frame = cv2.imread(input_stream_arg)
+        log.info("single frame shape: %s", frame.shape)
+        width = frame.shape[1]
+        height = frame.shape[0]
+    else:
+        log.info("attempting VideoCapture for: %s", input_stream_arg)
+        cap = cv2.VideoCapture(input_stream_arg)
+        cap.open(args.input)
+        captureOpen = True
+        width = int(cap.get(3))
+        height = int(cap.get(4))
+
+    log.info("input image width: %s, height: %s", width, height)
     #steam input shape:
-    width = int(cap.get(3))
-    height = int(cap.get(4))
     input_width = 0
     input_height = 0
     total_person_count = 0
@@ -129,13 +150,19 @@ def infer_on_stream(args, client, stats):
     next_request_id = 1
     render_time = 0
     parsing_time = 0
+    waitingOnInference = False
     ### TODO: Loop until stream is over ###
-    while cap.isOpened():
+    while (captureOpen or iflag or waitingOnInference):
         ### TODO: Read from the video capture ###
-        flag, frame = cap.read()
+        flag = True
+        key_pressed = None
+        if not iflag:
+            flag, frame = cap.read()
+            if not cap.isOpened():
+                captureOpen = False
+            key_pressed = cv2.waitKey(60)
         if not flag:
             break
-        key_pressed = cv2.waitKey(60)
         ### TODO: Pre-process the image as needed ###
         input_width = net_input_shape[2]
         input_height = net_input_shape[3]
@@ -146,6 +173,7 @@ def infer_on_stream(args, client, stats):
         ### TODO: Start asynchronous inference for specified request ###
         start_time = time()
         infer_network.exec_net(p_frame)
+        waitingOnInference = True
         render_time = 0
         inf_time = 0
 
@@ -162,6 +190,9 @@ def infer_on_stream(args, client, stats):
             boxes = list(boxes.values())
             boxes = nms(boxes)
             buffer_avg = 0
+
+            if (iflag):
+                boxes = filter_confidence(boxes, args.prob_threshold)
 
             if len(boxes) > 0:
                 ##we have a person in frame (maybe)
@@ -221,19 +252,18 @@ def infer_on_stream(args, client, stats):
             render_time_message = "OpenCV rendering time: {:.3f} ms".format(render_time * 1e3)
             cv2.putText(frame, render_time_message, (15, 45), cv2.FONT_HERSHEY_COMPLEX, 0.5, (10, 10, 200), 1)
             stats.append(dict(it=inf_time, rt=render_time))
-            ### TODO: Extract any desired stats from the results ###
-            ### TODO: Calculate and send relevant information on ###
-            ### current_count, total_count and duration to the MQTT server ###
-            ### Topic "person": keys of "count" and "total" ###
-            ### Topic "person/duration": key of "duration" ###
-            ### TODO: Send the frame to the FFMPEG server ###
             sys.stdout.buffer.write(frame)
             sys.stdout.flush()
-        ### TODO: Write an output image if `single_image_mode` ###
         if key_pressed == 27:
             break
-    cap.release()
-    cv2.destroyAllWindows()
+        if iflag and not waitingOnInference:
+            iflag = False
+        if infer_network.wait() == 0:
+            iflag = False
+            waitingOnInference = False
+    if cap:
+        cap.release()
+        cv2.destroyAllWindows()
     client.disconnect()
 
 def iou(box_1, box_2):
@@ -267,6 +297,13 @@ def nms(boxes):
                     reduced.append(boxes[j])
     ##log.info("nms - returning boxes: %s, %s", boxes, reduced)
     return reduced
+
+def filter_confidence(boxes, threshold):
+    for bidx, b in enumerate(boxes):
+        if (b[4] < threshold):
+            del boxes[bidx]
+    return boxes
+
 
 def post_process(result, width, height, class_filter):
     boxes = {}
