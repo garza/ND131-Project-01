@@ -17,6 +17,11 @@
  LIABLE FOR ANY CLAIM, DAMAGES OR OTHER LIABILITY, WHETHER IN AN ACTION
  OF CONTRACT, TORT OR OTHERWISE, ARISING FROM, OUT OF OR IN CONNECTION
  WITH THE SOFTWARE OR THE USE OR OTHER DEALINGS IN THE SOFTWARE.
+
+ Project-01 Comments
+ - For implmentation, I relied heavily on the source code used in the Foundation
+    course leading to this Nanodegree (ND132).  Especially the finaly project
+    (Server Communications), but also the Async Inference exercise.
 """
 
 
@@ -77,7 +82,7 @@ def build_argparser():
 
 
 def connect_mqtt():
-    ### TODO: Connect to the MQTT client ###
+    ### Connect to the MQTT client ###
     client = mqtt.Client()
     client.connect(MQTT_HOST, MQTT_PORT, MQTT_KEEPALIVE_INTERVAL)
     log.info('MQTT Connected')
@@ -98,7 +103,7 @@ def infer_on_stream(args, client, stats):
     buffer = Buffer()
     # Set Probability threshold for detections
     prob_threshold = args.prob_threshold
-    ### TODO: Load the model through `infer_network` ###
+    ### Load the model through `infer_network` ###
     infer_network.load_model(args.model, args.device, args.cpu_extension)
     net_input_shape = infer_network.get_input_shape()
     ##net_input_shape = [1, 3, 600, 600]
@@ -113,10 +118,10 @@ def infer_on_stream(args, client, stats):
     log.info("network input shape")
     log.info(net_input_name)
     log.info(net_input_shape)
-    ### TODO: Handle the input stream ###
+
+    ### Handle the input stream ###
     iflag = False
     input_stream_arg = 0 if args.input == "cam" else args.input
-
     if input_stream_arg.endswith('.jpg') or input_stream_arg.endswith('.bmp'):
         iflag = True
 
@@ -125,7 +130,7 @@ def infer_on_stream(args, client, stats):
     frame = None
     cap = None
     captureOpen = False
-
+    ## Handle image or stream or CAM
     if iflag:
         frame = cv2.imread(input_stream_arg)
         log.info("single frame shape: %s", frame.shape)
@@ -151,9 +156,9 @@ def infer_on_stream(args, client, stats):
     render_time = 0
     parsing_time = 0
     waitingOnInference = False
-    ### TODO: Loop until stream is over ###
+    ### Loop until stream is over ###
     while (captureOpen or iflag or waitingOnInference):
-        ### TODO: Read from the video capture ###
+        ### Read from the video capture ###
         flag = True
         key_pressed = None
         if not iflag:
@@ -163,23 +168,23 @@ def infer_on_stream(args, client, stats):
             key_pressed = cv2.waitKey(60)
         if not flag:
             break
-        ### TODO: Pre-process the image as needed ###
+        ### Pre-process the image as needed ###
         input_width = net_input_shape[2]
         input_height = net_input_shape[3]
         p_frame = cv2.resize(frame, (net_input_shape[3], net_input_shape[2]))
         p_frame = p_frame.transpose((2,0,1))
         p_frame = p_frame.reshape(1, *p_frame.shape)
 
-        ### TODO: Start asynchronous inference for specified request ###
+        ### Start asynchronous inference for specified request ###
         start_time = time()
         infer_network.exec_net(p_frame)
         waitingOnInference = True
         render_time = 0
         inf_time = 0
 
-        ### TODO: Wait for the result ###
+        ### Wait for the result ###
         if infer_network.wait() == 0:
-            ### TODO: Get the results of the inference request ###
+            ### Get the results of the inference request ###
             result = infer_network.get_output()
             inf_time = time() - start_time
             ###restart clock to capture evaluate/draw time
@@ -267,6 +272,14 @@ def infer_on_stream(args, client, stats):
     client.disconnect()
 
 def iou(box_1, box_2):
+    """
+    Notes:
+    Implementation for IOU and NMS here done with help from the python_demos
+    distributed with OpenVINO as well as looking at how pycoco tools did it via the
+    TensorFlow Model Garden inference notebook (see more in the WRITEUP.md)
+
+    """
+
     width_overlap = min(box_1[2], box_2[2]) - max(box_1[0], box_2[0])
     height_overlap = min(box_1[3], box_2[3]) - max(box_1[1], box_2[1])
     if width_overlap < 0 or height_overlap < 0:
@@ -282,6 +295,12 @@ def iou(box_1, box_2):
 
 ## first try at implementing nonmax supression
 def nms(boxes):
+    """
+    Notes:
+    Implementation for IOU and NMS here done with help from the python_demos
+    distributed with OpenVINO as well as looking at how pycoco tools did it via the
+    TensorFlow Model Garden inference notebook (see more in the WRITEUP.md)
+    """
     reduced = []
     if len(boxes) > 0:
         ##log.info("nms 4 starting with boxes: %s", boxes)
@@ -299,13 +318,21 @@ def nms(boxes):
     return reduced
 
 def filter_confidence(boxes, threshold):
+    """
+    when we want to quickly drop all boxes not meeting our threshold
+    really only used when main.py is called with a single image
+    """
     for bidx, b in enumerate(boxes):
         if (b[4] < threshold):
             del boxes[bidx]
     return boxes
 
-
 def post_process(result, width, height, class_filter):
+    """
+    take the resulting output and put it in a easier to access format
+    so we can evaluate confidence thresholds and easily access scaled width/height
+    for drawing bounding boxes
+    """
     boxes = {}
     iw = width
     ih = height
@@ -326,6 +353,10 @@ def post_process(result, width, height, class_filter):
     return boxes
 
 def draw_box(frame, boxes, inference_time):
+    """
+    Method for drawing timing messages on the frame, several nods here to the
+    OpenVINO python demos for SSD inference
+    """
     det_label = "Person"
     ##log.info("draw-boxes: %s", boxes)
     for idx, b in enumerate(boxes):

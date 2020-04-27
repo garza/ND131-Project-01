@@ -1,6 +1,9 @@
 #!/usr/bin/env python3
 """
  Example of inference with TensorFlow, not OpenVino
+
+    Code here relies heavily on the Object Detection API Demo in the Tensorflow Model Garden
+    https://github.com/tensorflow/models/blob/master/research/object_detection/object_detection_tutorial.ipynb
 """
 
 import tarfile

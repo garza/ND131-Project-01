@@ -1,6 +1,9 @@
 """People Counter."""
 """
     TensorFlow version for comparison
+
+    Code here relies heavily on the Object Detection API Demo in the Tensorflow Model Garden
+    https://github.com/tensorflow/models/blob/master/research/object_detection/object_detection_tutorial.ipynb
 """
 
 import os
